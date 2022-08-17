@@ -23,12 +23,12 @@ func NewFileMode(mode os.FileMode) FileMode {
 		return m | S_IFREG
 	}
 
-	types := map[uint32]FileMode {
-		0: S_IFDIR,
-		4: S_IFLNK,
-		5: S_IFBLK,
-		6: S_IFIFO,
-		7: S_IFSOCK,
+	types := map[uint32]FileMode{
+		0:  S_IFDIR,
+		4:  S_IFLNK,
+		5:  S_IFBLK,
+		6:  S_IFIFO,
+		7:  S_IFSOCK,
 		10: S_IFCHR,
 	}
 	for i, t := range types {
@@ -41,32 +41,32 @@ func NewFileMode(mode os.FileMode) FileMode {
 }
 
 func (m FileMode) IsREG() bool {
-	return (m&S_IFMT)==S_IFREG
+	return (m & S_IFMT) == S_IFREG
 }
 
 func (m FileMode) IsDIR() bool {
-	return (m&S_IFMT)==S_IFDIR
+	return (m & S_IFMT) == S_IFDIR
 }
 
 func (m FileMode) IsBLK() bool {
-	return (m&S_IFMT)==S_IFBLK
+	return (m & S_IFMT) == S_IFBLK
 }
 
 func (m FileMode) IsLNK() bool {
-	return (m&S_IFMT)==S_IFLNK
+	return (m & S_IFMT) == S_IFLNK
 }
 
 func (m FileMode) IsFIFO() bool {
-	return (m&S_IFMT)==S_IFIFO
+	return (m & S_IFMT) == S_IFIFO
 }
 
 func (m FileMode) IsSOCK() bool {
-	return (m&S_IFMT)==S_IFSOCK
+	return (m & S_IFMT) == S_IFSOCK
 }
 
 // Return only unix permission bits
 func (m FileMode) Perm() FileMode {
-	return m&0777
+	return m & 0777
 }
 
 // Convert to os.FileMode
@@ -78,25 +78,18 @@ func (m FileMode) Convert() os.FileMode {
 		break
 	case S_IFDIR:
 		mode |= os.ModeDir
-		break
 	case S_IFLNK:
 		mode |= os.ModeSymlink
-		break
 	case S_IFBLK:
 		mode |= os.ModeDevice
-		break
 	case S_IFSOCK:
 		mode |= os.ModeSocket
-		break
 	case S_IFIFO:
 		mode |= os.ModeNamedPipe
-		break
 	case S_IFCHR:
 		mode |= os.ModeCharDevice
-		break
 	default:
 		mode |= os.ModeIrregular
-		break
 	}
 	return mode
 }
@@ -109,28 +102,21 @@ func (m FileMode) String() string {
 		break
 	case S_IFDIR:
 		chars[0] = 'd'
-		break
 	case S_IFLNK:
 		chars[0] = 'l'
-		break
 	case S_IFBLK:
 		chars[0] = 'b'
-		break
 	case S_IFSOCK:
 		chars[0] = 's'
-		break
 	case S_IFIFO:
 		chars[0] = 'p'
-		break
 	case S_IFCHR:
 		chars[0] = 'c'
-		break
 	default:
 		chars[0] = '?'
-		break
 	}
-	for i:=0; i < 9; i++ {
-		if m & (1 << i) == 0 {
+	for i := 0; i < 9; i++ {
+		if m&(1<<i) == 0 {
 			chars[9-i] = '-'
 		}
 	}
@@ -144,10 +130,7 @@ func (L FileList) Len() int {
 }
 
 func (L FileList) Less(i, j int) bool {
-	if bytes.Compare(L[i].Path, L[j].Path) == -1 {
-		return true
-	}
-	return false
+	return bytes.Compare(L[i].Path, L[j].Path) == -1
 }
 
 func (L FileList) Swap(i, j int) {
@@ -157,12 +140,12 @@ func (L FileList) Swap(i, j int) {
 /* Diff two sorted rsync file list, return their difference
 list NEW: only R has.
 list OLD: only L has.
- */
+*/
 func (L FileList) Diff(R FileList) (newitems []int, olditems []int) {
 	newitems = make([]int, 0, len(R))
 	olditems = make([]int, 0, len(L))
-	i := 0	// index of L
-	j := 0	// index of R
+	i := 0 // index of L
+	j := 0 // index of R
 
 	for i < len(L) && j < len(R) {
 		// The result will be 0 if a==b, -1 if a < b, and +1 if a > b.
@@ -178,15 +161,12 @@ func (L FileList) Diff(R FileList) (newitems []int, olditems []int) {
 			}
 			i++
 			j++
-			break
 		case 1:
 			newitems = append(newitems, j)
 			j++
-			break
 		case -1:
 			olditems = append(olditems, i)
 			i++
-			break
 		}
 	}
 

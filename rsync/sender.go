@@ -5,34 +5,29 @@ import (
 )
 
 type Sender struct {
-	conn    *Conn
-	module  string
-	path    string
-	seed    int32
-	lVer    int32
-	rVer    int32
-	storage FS
+	Conn    *Conn
+	Module  string
+	Path    string
+	Seed    int32
+	LVer    int32
+	RVer    int32
+	Storage FS
 }
 
 func (s *Sender) SendFileList() error {
-	list, err := s.storage.List()
+	list, err := s.Storage.List()
 	if err != nil {
 		return err
 	}
 
 	// Send list to receiver
 	var last *FileInfo = nil
-	for _, f := range list{
+	for _, f := range list {
 		var flags byte = 0
-
 
 		if bytes.Equal(f.Path, []byte(".")) {
 			if f.Mode.IsDIR() {
 				flags |= FLIST_TOP_LEVEL
-			}
-		} else {
-			if f.Mode.IsDIR() { // TODO: recursive
-				// flags |= Flags.NO_CONTENT_DIR | Flags.XFLAGS;
 			}
 		}
 
@@ -57,57 +52,57 @@ func (s *Sender) SendFileList() error {
 		}
 
 		rPathCount := int32(len(f.Path) - lPathCount)
-		if  rPathCount > 255 {
+		if rPathCount > 255 {
 			flags |= FLIST_NAME_LONG
 		}
 
 		/* we must make sure we don't send a zero flags byte or the other
 		   end will terminate the flist transfer */
 		if flags == 0 && !f.Mode.IsDIR() {
-			flags |= 1<<0
+			flags |= 1 << 0
 		}
 		if flags == 0 {
 			flags |= FLIST_NAME_LONG
 		}
 		/* Send flags */
-		if err != s.conn.WriteByte(flags) {
+		if err != s.Conn.WriteByte(flags) {
 			return err
 		}
 
 		/* Send len of path, and bytes of path */
-		if flags& FLIST_NAME_SAME != 0 {
-			if err = s.conn.WriteByte(flags); err != nil {
+		if flags&FLIST_NAME_SAME != 0 {
+			if err = s.Conn.WriteByte(flags); err != nil {
 				return err
 			}
 		}
 
-		if flags& FLIST_NAME_LONG != 0 {
-			if err = s.conn.WriteInt(rPathCount); err != nil {
+		if flags&FLIST_NAME_LONG != 0 {
+			if err = s.Conn.WriteInt(rPathCount); err != nil {
 				return err
 			}
 		} else {
-			if err = s.conn.WriteByte(byte(rPathCount)); err != nil {
+			if err = s.Conn.WriteByte(byte(rPathCount)); err != nil {
 				return err
 			}
 		}
 
-		if _, err = s.conn.Write(f.Path[lPathCount:]); err != nil {
+		if _, err = s.Conn.Write(f.Path[lPathCount:]); err != nil {
 			return err
 		}
 
 		/* Send size of file */
-		if err = s.conn.WriteLong(f.Size); err != nil {
+		if err = s.Conn.WriteLong(f.Size); err != nil {
 			return err
 		}
 
 		/* Send Mtime, GID, UID, RDEV if needed */
-		if flags& FLIST_TIME_SAME == 0 {
-			if err = s.conn.WriteInt(f.Mtime); err != nil {
+		if flags&FLIST_TIME_SAME == 0 {
+			if err = s.Conn.WriteInt(f.Mtime); err != nil {
 				return err
 			}
 		}
-		if flags& FLIST_MODE_SAME == 0 {
-			if err = s.conn.WriteInt(int32(f.Mode)); err != nil {
+		if flags&FLIST_MODE_SAME == 0 {
+			if err = s.Conn.WriteInt(int32(f.Mode)); err != nil {
 				return err
 			}
 		}
@@ -124,7 +119,7 @@ func (s *Sender) SendFileList() error {
 
 func (s *Sender) Generator(fileList FileList) error {
 	for {
-		index, err := s.conn.ReadInt()
+		index, err := s.Conn.ReadInt()
 		if err != nil {
 			return err
 		} else if index == INDEX_END {
@@ -132,24 +127,22 @@ func (s *Sender) Generator(fileList FileList) error {
 		}
 
 		// Receive block checksum from receiver
-		count, err := s.conn.ReadInt()
+		count, err := s.Conn.ReadInt()
 		if err != nil {
 			return nil
 		}
 
-		blen, err := s.conn.ReadInt()
+		blen, err := s.Conn.ReadInt()
 		if err != nil {
 			return nil
 		}
 
-		s2len, err := s.conn.ReadInt()
+		s2len, err := s.Conn.ReadInt()
 		if err != nil {
 			return nil
-		} else if s2len > 16 {
-			// FIXME: check if sum2 length is valid
 		}
 
-		remainder, err := s.conn.ReadInt()
+		remainder, err := s.Conn.ReadInt()
 		if err != nil {
 			return nil
 		}
@@ -157,41 +150,40 @@ func (s *Sender) Generator(fileList FileList) error {
 		sums := make([]SumChunk, 0, count)
 
 		var (
-			i int32 = 0
+			i      int32 = 0
 			offset int64 = 0
 		)
 
-
 		for ; i < count; i++ {
-			sum1, err := s.conn.ReadInt() // sum1:
+			sum1, err := s.Conn.ReadInt() // sum1:
 			if err != nil {
 				return err
 			}
 
 			sum2 := make([]byte, 16)
-			if _, err := s.conn.Read(sum2); err != nil {
+			if _, err := s.Conn.Read(sum2); err != nil {
 				return err
 			}
 
 			chunk := new(SumChunk)
-			chunk.sum1 = uint32(sum1)
-			chunk.sum2 = sum2
-			chunk.fileOffset = offset
+			chunk.Sum1 = uint32(sum1)
+			chunk.Sum2 = sum2
+			chunk.FileOffset = offset
 
 			if i == count-1 && remainder != 0 {
-				chunk.chunkLen = uint(remainder);
+				chunk.ChunkLen = uint(remainder)
 			} else {
-				chunk.chunkLen = uint(blen)
+				chunk.ChunkLen = uint(blen)
 			}
-			offset += int64(chunk.chunkLen)
-			sums = append(sums, )
+			offset += int64(chunk.ChunkLen)
+			sums = append(sums)
 		}
 		result := new(SumStruct)
-		result.fileLen = uint64(offset)
-		result.count = uint64(count)
-		result.blockLen = uint64(blen)
-		result.sum2Len = uint64(s2len)
-		result.remainder = uint64(remainder)
+		result.FileLen = uint64(offset)
+		result.Count = uint64(count)
+		result.BlockLen = uint64(blen)
+		result.Sum2Len = uint64(s2len)
+		result.Remainder = uint64(remainder)
 
 	}
 	if err := s.FileUploader(); err != nil {
@@ -201,16 +193,13 @@ func (s *Sender) Generator(fileList FileList) error {
 }
 
 func (s *Sender) FileUploader() error {
-	panic("Not implemented yet");
-	return nil
+	panic("Not implemented yet")
 }
 
 func (s *Sender) FinalPhase() error {
-	panic("Not implemented yet");
-	return nil
+	panic("Not implemented yet")
 }
 
 func (s *Sender) Sync() error {
-	panic("Not implemented yet");
-	return nil
+	panic("Not implemented yet")
 }

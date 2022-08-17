@@ -1,10 +1,11 @@
 package rsync
 
 import (
-	"github.com/pkg/errors"
 	"log"
 	"strconv"
 	"strings"
+
+	"github.com/pkg/errors"
 )
 
 func SplitURIS(uri string) (string, int, string, string, error) {
@@ -106,9 +107,7 @@ func TrimPrepath(prepath string) string {
 	if !strings.HasSuffix(ppath, "/") {
 		ppath += "/"
 	}
-	if strings.HasPrefix(ppath, "/") {
-		ppath = ppath[1:]
-	}
+	ppath = strings.TrimPrefix(ppath, "/")
 	return ppath
 }
 
@@ -119,5 +118,5 @@ func longestMatch(left []byte, right []byte) int {
 			break
 		}
 	}
-	return i;
+	return i
 }

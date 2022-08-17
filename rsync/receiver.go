@@ -5,26 +5,27 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/kaiakz/ubuffer"
 	"io"
 	"log"
 	"sort"
 	"time"
+
+	"github.com/kaiakz/ubuffer"
 )
 
 /* Receiver:
 1. Receive File list
 2. Request files by sending files' index
-3. Receive Files, pass the files to storage
+3. Receive Files, pass the files to Storage
 */
 type Receiver struct {
-	conn    *Conn
-	module  string
-	path    string
-	seed    int32
-	lVer    int32
-	rVer    int32
-	storage FS
+	Conn    *Conn
+	Module  string
+	Path    string
+	Seed    int32
+	LVer    int32
+	RVer    int32
+	Storage FS
 }
 
 func (r *Receiver) BuildArgs() string {
@@ -33,20 +34,20 @@ func (r *Receiver) BuildArgs() string {
 
 // DeMux was started here
 func (r *Receiver) StartMuxIn() {
-	r.conn.reader = NewMuxReaderV0(r.conn.reader)
+	r.Conn.Reader = NewMuxReaderV0(r.Conn.Reader)
 }
 
 func (r *Receiver) SendExclusions() error {
 	// Send exclusion
-	return r.conn.WriteInt(EXCLUSION_END)
+	return r.Conn.WriteInt(EXCLUSION_END)
 }
 
 // Return a filelist from remote
 func (r *Receiver) RecvFileList() (FileList, map[string][]byte, error) {
-	filelist := make(FileList, 0, 1 *M)
+	filelist := make(FileList, 0, 1*M)
 	symlinks := make(map[string][]byte)
 	for {
-		flags, err := r.conn.ReadByte()
+		flags, err := r.Conn.ReadByte()
 		if err != nil {
 			return filelist, symlinks, err
 		}
@@ -67,7 +68,7 @@ func (r *Receiver) RecvFileList() (FileList, map[string][]byte, error) {
 		 * than byte-size.
 		 */
 		if (flags & FLIST_NAME_SAME) != 0 {
-			val, err := r.conn.ReadByte()
+			val, err := r.Conn.ReadByte()
 			if err != nil {
 				return filelist, symlinks, err
 			}
@@ -77,14 +78,14 @@ func (r *Receiver) RecvFileList() (FileList, map[string][]byte, error) {
 
 		/* Get the (possibly-remaining) filename length. */
 		if (flags & FLIST_NAME_LONG) != 0 {
-			val, err := r.conn.ReadInt()
+			val, err := r.Conn.ReadInt()
 			if err != nil {
 				return filelist, symlinks, err
 			}
 			pathlen = uint32(val) // can't use for rsync 31
 
 		} else {
-			val, err := r.conn.ReadByte()
+			val, err := r.Conn.ReadByte()
 			if err != nil {
 				return filelist, symlinks, err
 			}
@@ -98,12 +99,12 @@ func (r *Receiver) RecvFileList() (FileList, map[string][]byte, error) {
 		// malloc len error?
 
 		p := make([]byte, pathlen)
-		_, err = io.ReadFull(r.conn, p)
+		_, err = io.ReadFull(r.Conn, p)
 		if err != nil {
 			return filelist, symlinks, err
 		}
 
-		path := make([]byte, 0, partial + pathlen)
+		path := make([]byte, 0, partial+pathlen)
 		/* If so, use last */
 		if (flags & FLIST_NAME_SAME) != 0 { // FLIST_NAME_SAME
 			last := filelist[lastIndex]
@@ -112,7 +113,7 @@ func (r *Receiver) RecvFileList() (FileList, map[string][]byte, error) {
 		path = append(path, p...)
 		//fmt.Println("Path ", string(path))
 
-		size, err := r.conn.ReadVarint()
+		size, err := r.Conn.ReadVarint()
 		if err != nil {
 			return filelist, symlinks, err
 		}
@@ -121,7 +122,7 @@ func (r *Receiver) RecvFileList() (FileList, map[string][]byte, error) {
 		/* Read the modification time. */
 		var mtime int32
 		if (flags & FLIST_TIME_SAME) == 0 {
-			mtime, err = r.conn.ReadInt()
+			mtime, err = r.Conn.ReadInt()
 			if err != nil {
 				return filelist, symlinks, err
 			}
@@ -133,7 +134,7 @@ func (r *Receiver) RecvFileList() (FileList, map[string][]byte, error) {
 		/* Read the file mode. */
 		var mode FileMode
 		if (flags & FLIST_MODE_SAME) == 0 {
-			val, err := r.conn.ReadInt()
+			val, err := r.Conn.ReadInt()
 			if err != nil {
 				return filelist, symlinks, err
 			}
@@ -145,15 +146,15 @@ func (r *Receiver) RecvFileList() (FileList, map[string][]byte, error) {
 
 		// TODO: Sym link
 		if ((mode & 32768) != 0) && ((mode & 8192) != 0) {
-			sllen, err := r.conn.ReadInt()
+			sllen, err := r.Conn.ReadInt()
 			if err != nil {
 				return filelist, symlinks, err
 			}
 			slink := make([]byte, sllen)
-			_, err = io.ReadFull(r.conn, slink)
+			_, err = io.ReadFull(r.Conn, slink)
 			symlinks[string(path)] = slink
 			if err != nil {
-				return filelist, symlinks, errors.New("Failed to read symlink")
+				return filelist, symlinks, errors.New("failed to read symlink")
 			}
 			//fmt.Println("Symbolic Len:", len, "Content:", slink)
 		}
@@ -174,19 +175,19 @@ func (r *Receiver) RecvFileList() (FileList, map[string][]byte, error) {
 	return filelist, symlinks, nil
 }
 
-// Generator: handle files: if it's a regular file, send its index. Otherwise, put them to storage
+// Generator: handle files: if it's a regular file, send its index. Otherwise, put them to Storage
 func (r *Receiver) Generator(remoteList FileList, downloadList []int, symlinks map[string][]byte) error {
 	emptyBlocks := make([]byte, 16) // 4 + 4 + 4 + 4 bytes, all bytes set to 0
 	content := new(bytes.Buffer)
 
 	for _, v := range downloadList {
 		if remoteList[v].Mode.IsREG() {
-			if err := r.conn.WriteInt(int32(v)); err != nil {
+			if err := r.Conn.WriteInt(int32(v)); err != nil {
 				log.Println("Failed to send index")
 				return err
 			}
 			//fmt.Println("Request: ", string(remoteList[v].Path), uint32(remoteList[v].Mode))
-			if _, err := r.conn.Write(emptyBlocks); err != nil {
+			if _, err := r.Conn.Write(emptyBlocks); err != nil {
 				return err
 			}
 		} else {
@@ -202,9 +203,9 @@ func (r *Receiver) Generator(remoteList FileList, downloadList []int, symlinks m
 				size = int64(content.Len())
 			}
 
-			if _, err := r.storage.Put(string(remoteList[v].Path), content, size, FileMetadata{
+			if _, err := r.Storage.Put(string(remoteList[v].Path), content, size, FileMetadata{
 				Mtime: remoteList[v].Mtime,
-				Mode: remoteList[v].Mode,
+				Mode:  remoteList[v].Mode,
 			}); err != nil {
 				return err
 			}
@@ -212,7 +213,7 @@ func (r *Receiver) Generator(remoteList FileList, downloadList []int, symlinks m
 	}
 
 	// Send -1 to finish, then start to download
-	if err := r.conn.WriteInt(INDEX_END); err != nil {
+	if err := r.Conn.WriteInt(INDEX_END); err != nil {
 		log.Println("Can't send INDEX_END")
 		return err
 	}
@@ -230,7 +231,7 @@ func (r *Receiver) FileDownloader(localList FileList) error {
 	rmd4 := make([]byte, 16)
 
 	for {
-		index, err := r.conn.ReadInt()
+		index, err := r.Conn.ReadInt()
 		if err != nil {
 			return err
 		}
@@ -239,22 +240,22 @@ func (r *Receiver) FileDownloader(localList FileList) error {
 		}
 		//fmt.Println("INDEX:", index)
 
-		count, err := r.conn.ReadInt() /* block count */
+		count, err := r.Conn.ReadInt() /* block count */
 		if err != nil {
 			return err
 		}
 
-		blen, err := r.conn.ReadInt() /* block length */
+		blen, err := r.Conn.ReadInt() /* block length */
 		if err != nil {
 			return err
 		}
 
-		clen, err := r.conn.ReadInt() /* checksum length */
+		clen, err := r.Conn.ReadInt() /* checksum length */
 		if err != nil {
 			return err
 		}
 
-		remainder, err := r.conn.ReadInt() /* block remainder */
+		remainder, err := r.Conn.ReadInt() /* block remainder */
 		if err != nil {
 			return err
 		}
@@ -274,7 +275,7 @@ func (r *Receiver) FileDownloader(localList FileList) error {
 		//}
 
 		for {
-			token, err := r.conn.ReadInt()
+			token, err := r.Conn.ReadInt()
 			if err != nil {
 				return err
 			}
@@ -282,11 +283,11 @@ func (r *Receiver) FileDownloader(localList FileList) error {
 			if token == 0 {
 				break
 			} else if token < 0 {
-				return errors.New("Does not support block checksum")
+				return errors.New("does not support block checksum")
 				// Reference
 			} else {
 				ctx := make([]byte, token) // FIXME: memory leak?
-				_, err = io.ReadFull(r.conn, ctx)
+				_, err = io.ReadFull(r.Conn, ctx)
 				if err != nil {
 					return err
 				}
@@ -301,12 +302,12 @@ func (r *Receiver) FileDownloader(localList FileList) error {
 			}
 		}
 		if bufwriter.Flush() != nil {
-			return errors.New("Failed to flush buffer")
+			return errors.New("failed to flush buffer")
 		}
 
 		// Remote MD4
 		// TODO: compare computed MD4 with remote MD4
-		_, err = io.ReadFull(r.conn, rmd4)
+		_, err = io.ReadFull(r.Conn, rmd4)
 		if err != nil {
 			return err
 		}
@@ -315,11 +316,13 @@ func (r *Receiver) FileDownloader(localList FileList) error {
 		//	log.Println("Checksum error")
 		//}
 
-		// Put file to object storage
-		var n int64
-		n, err = buffer.Seek(0, io.SeekStart)
+		// Put file to object Storage
+		_, err = buffer.Seek(0, io.SeekStart)
+		if err != nil {
+			return err
+		}
 
-		n, err = r.storage.Put(string(path), buffer, int64(downloadeSize), FileMetadata{
+		n, err := r.Storage.Put(string(path), buffer, int64(downloadeSize), FileMetadata{
 			Mtime: localList[index].Mtime,
 			Mode:  localList[index].Mode,
 		})
@@ -328,7 +331,7 @@ func (r *Receiver) FileDownloader(localList FileList) error {
 		}
 
 		if buffer.Finalize() != nil {
-			return errors.New("Buffer can't be finalized")
+			return errors.New("buffer can't be finalized")
 		}
 
 		log.Printf("Successfully uploaded %s of size %d\n", path, n)
@@ -341,7 +344,7 @@ func (r *Receiver) FileCleaner(localList FileList, deleteList []int) error {
 	// Thus it always cleans sub-files firstly
 	for i := len(deleteList) - 1; i >= 0; i-- {
 		fname := string(localList[deleteList[i]].Path)
-		err := r.storage.Delete(fname, localList[deleteList[i]].Mode)
+		err := r.Storage.Delete(fname, localList[deleteList[i]].Mode)
 		log.Println("Deleted:", fname)
 		if err != nil {
 			return err
@@ -352,23 +355,23 @@ func (r *Receiver) FileCleaner(localList FileList, deleteList []int) error {
 
 func (r *Receiver) FinalPhase() error {
 	//go func() {
-	//	ioerror, err := r.conn.ReadInt()
+	//	ioerror, err := r.Conn.ReadInt()
 	//	log.Println(ioerror, err)
 	//}()
 
-	err := r.conn.WriteInt(INDEX_END)
+	err := r.Conn.WriteInt(INDEX_END)
 	if err != nil {
 		return err
 	}
-	return r.conn.WriteInt(INDEX_END)
+	return r.Conn.WriteInt(INDEX_END)
 }
 
 func (r *Receiver) Sync() error {
 	defer func() {
-		log.Println("Task completed", r.conn.Close())	// TODO: How to handle errors from Close
+		log.Println("Task completed", r.Conn.Close()) // TODO: How to handle errors from Close
 	}()
 
-	lfiles, err := r.storage.List()
+	lfiles, err := r.Storage.List()
 	if err != nil {
 		return err
 	}
@@ -382,7 +385,7 @@ func (r *Receiver) Sync() error {
 	}
 	log.Println("Remote files count:", len(rfiles))
 
-	ioerr, err := r.conn.ReadInt()
+	ioerr, err := r.Conn.ReadInt()
 	if err != nil {
 		return nil
 	}
@@ -405,4 +408,3 @@ func (r *Receiver) Sync() error {
 	}
 	return nil
 }
-

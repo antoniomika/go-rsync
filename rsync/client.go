@@ -24,9 +24,9 @@ func SocketClient(storage FS, address string, module string, path string, option
 	}
 
 	conn := &Conn{
-		writer:    skt,
-		reader:    skt,
-		bytespool: make([]byte, 8),
+		Writer:    skt,
+		Reader:    skt,
+		Bytespool: make([]byte, 8),
 	}
 
 	/* HandShake by socket */
@@ -43,8 +43,7 @@ func SocketClient(storage FS, address string, module string, path string, option
 	var remoteProtocol, remoteProtocolSub int
 	_, err = fmt.Sscanf(versionStr, "@RSYNCD: %d.%d", remoteProtocol, remoteProtocolSub)
 	if err != nil {
-		// FIXME: (panic)type not a pointer: int
-		//panic(err)
+		log.Println(err)
 	}
 	log.Println(versionStr)
 
@@ -92,7 +91,7 @@ func SocketClient(storage FS, address string, module string, path string, option
 	log.Println("Handshake completed")
 
 	// Begin to demux
-	conn.reader = NewMuxReader(conn.reader)
+	conn.Reader = NewMuxReader(conn.Reader)
 
 	// As a client, we need to send filter list
 	err = conn.WriteInt(EXCLUSION_END)
@@ -103,11 +102,11 @@ func SocketClient(storage FS, address string, module string, path string, option
 	// TODO: Sender
 
 	return &Receiver{
-		conn:    conn,
-		module:  module,
-		path:    path,
-		seed:    seed,
-		storage: storage,
+		Conn:    conn,
+		Module:  module,
+		Path:    path,
+		Seed:    seed,
+		Storage: storage,
 	}, nil
 }
 
@@ -120,9 +119,9 @@ func SshClient(storage FS, address string, module string, path string, options m
 		return nil, err
 	}
 	conn := &Conn{
-		writer:    ssh,
-		reader:    ssh,
-		bytespool: make([]byte, 8),
+		Writer:    ssh,
+		Reader:    ssh,
+		Bytespool: make([]byte, 8),
 	}
 
 	// Handshake
@@ -144,12 +143,12 @@ func SshClient(storage FS, address string, module string, path string, options m
 	// TODO: Sender
 
 	return &Receiver{
-		conn:    conn,
-		module:  module,
-		path:    path,
-		seed:    seed,
-		lVer:    lver,
-		rVer:    rver,
-		storage: storage,
+		Conn:    conn,
+		Module:  module,
+		Path:    path,
+		Seed:    seed,
+		LVer:    lver,
+		RVer:    rver,
+		Storage: storage,
 	}, nil
 }

@@ -13,32 +13,32 @@ type SendReceiver interface {
 // io.ReadWriteCloser
 // This struct has two main attributes, both of them can be used for a plain socket or an SSH
 type Conn struct {
-	writer    io.WriteCloser // Write only
-	reader    io.ReadCloser // Read only
-	bytespool []byte // Anti memory-wasted, default size: 8 bytes
+	Writer    io.WriteCloser // Write only
+	Reader    io.ReadCloser  // Read only
+	Bytespool []byte         // Anti memory-wasted, default size: 8 bytes
 }
 
 func (conn *Conn) Write(p []byte) (n int, err error) {
-	return conn.writer.Write(p)
+	return conn.Writer.Write(p)
 }
 
 func (conn *Conn) Read(p []byte) (n int, err error) {
-	return conn.reader.Read(p)
+	return conn.Reader.Read(p)
 }
 
 /* Encoding: little endian */
 // size of: int: 4, long: 8, varint: 4 or 8
 func (conn *Conn) ReadByte() (byte, error) {
-	val := conn.bytespool[:1]
+	val := conn.Bytespool[:1]
 	_, err := io.ReadFull(conn, val)
 	if err != nil {
 		return 0, err
 	}
-	return conn.bytespool[0], nil
+	return conn.Bytespool[0], nil
 }
 
 func (conn *Conn) ReadShort() (int16, error) {
-	val := conn.bytespool[:2]
+	val := conn.Bytespool[:2]
 	_, err := io.ReadFull(conn, val)
 	if err != nil {
 		return 0, err
@@ -47,7 +47,7 @@ func (conn *Conn) ReadShort() (int16, error) {
 }
 
 func (conn *Conn) ReadInt() (int32, error) {
-	val := conn.bytespool[:4]
+	val := conn.Bytespool[:4]
 	_, err := io.ReadFull(conn, val)
 	if err != nil {
 		return 0, err
@@ -56,7 +56,7 @@ func (conn *Conn) ReadInt() (int32, error) {
 }
 
 func (conn *Conn) ReadLong() (int64, error) {
-	val := conn.bytespool[:8]
+	val := conn.Bytespool[:8]
 	_, err := io.ReadFull(conn, val)
 	if err != nil {
 		return 0, err
@@ -65,7 +65,7 @@ func (conn *Conn) ReadLong() (int64, error) {
 }
 
 func (conn *Conn) ReadVarint() (int64, error) {
-	sval, err := conn.ReadInt();
+	sval, err := conn.ReadInt()
 	if err != nil {
 		return 0, err
 	}
@@ -75,26 +75,26 @@ func (conn *Conn) ReadVarint() (int64, error) {
 	return conn.ReadLong()
 }
 
-func  (conn *Conn) WriteByte(data byte) error {
-	return binary.Write(conn.writer, binary.LittleEndian, data)
+func (conn *Conn) WriteByte(data byte) error {
+	return binary.Write(conn.Writer, binary.LittleEndian, data)
 }
 
-func  (conn *Conn) WriteShort(data int16) error {
-	return binary.Write(conn.writer, binary.LittleEndian, data)
+func (conn *Conn) WriteShort(data int16) error {
+	return binary.Write(conn.Writer, binary.LittleEndian, data)
 }
 
-func  (conn *Conn) WriteInt(data int32) error {
-	return binary.Write(conn.writer, binary.LittleEndian, data)
+func (conn *Conn) WriteInt(data int32) error {
+	return binary.Write(conn.Writer, binary.LittleEndian, data)
 }
 
-func  (conn *Conn) WriteLong(data int64) error {
-	return binary.Write(conn.writer, binary.LittleEndian, data)
+func (conn *Conn) WriteLong(data int64) error {
+	return binary.Write(conn.Writer, binary.LittleEndian, data)
 }
 
 // TODO: If both writer and reader are based on a same Connection (socket, SSH), how to close them twice?
 func (conn *Conn) Close() error {
-	_ = conn.writer.Close()
-	_ = conn.reader.Close()
+	_ = conn.Writer.Close()
+	_ = conn.Reader.Close()
 	return nil
 }
 
