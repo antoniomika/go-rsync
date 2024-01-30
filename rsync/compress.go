@@ -9,6 +9,7 @@ import (
 	rsync uses zlib to do compression, the windowsBits is -15: raw data
 */
 
+//nolint:revive,stylecheck
 const (
 	END_FLAG      = 0
 	TOKEN_LONG    = 0x20

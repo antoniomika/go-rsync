@@ -17,7 +17,7 @@ import (
 
 // TODO: passes more arguments: cmd
 // Connect to rsync daemon
-func SocketClient(storage FS, address string, module string, path string, options map[string]string) (SendReceiver, error) {
+func SocketClient(storage FS, address string, module string, path string, _ map[string]string) (SendReceiver, error) {
 	skt, err := net.Dial("tcp", address)
 	if err != nil {
 		return nil, err
@@ -71,10 +71,10 @@ func SocketClient(storage FS, address string, module string, path string, option
 	}
 
 	// Send arguments
-	buf.Write([]byte(SAMPLE_ARGS))
-	buf.Write([]byte(module))
-	buf.Write([]byte(path))
-	buf.Write([]byte("\n\n"))
+	buf.WriteString(SAMPLE_ARGS)
+	buf.WriteString(module)
+	buf.WriteString(path)
+	buf.WriteString("\n\n")
 	_, err = conn.Write(buf.Bytes())
 	if err != nil {
 		return nil, err
@@ -111,7 +111,7 @@ func SocketClient(storage FS, address string, module string, path string, option
 }
 
 // Connect to sshd, and start a rsync server on remote
-func SshClient(storage FS, address string, module string, path string, options map[string]string) (SendReceiver, error) {
+func SSHClient(storage FS, address string, module string, path string, _ map[string]string) (SendReceiver, error) {
 	// TODO: build args
 
 	ssh, err := NewSSH(address, "", "", "rsync --server --sender -l -p -r -t")

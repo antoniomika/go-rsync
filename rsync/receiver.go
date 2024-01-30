@@ -13,7 +13,9 @@ import (
 	"github.com/kaiakz/ubuffer"
 )
 
-/* Receiver:
+/*
+	Receiver:
+
 1. Receive File list
 2. Request files by sending files' index
 3. Receive Files, pass the files to Storage
@@ -55,10 +57,10 @@ func (r *Receiver) RecvFileList() (FileList, map[string][]byte, error) {
 		if flags == FLIST_END {
 			break
 		}
-		//fmt.Printf("[%d]\n", flags)
+		// fmt.Printf("[%d]\n", flags)
 
 		lastIndex := len(filelist) - 1
-		var partial, pathlen uint32 = 0, 0
+		var partial, pathlen uint32
 
 		/*
 		 * Read our filename.
@@ -73,7 +75,7 @@ func (r *Receiver) RecvFileList() (FileList, map[string][]byte, error) {
 				return filelist, symlinks, err
 			}
 			partial = uint32(val)
-			//fmt.Println("Partical", partial)
+			// fmt.Println("Particular", partial)
 		}
 
 		/* Get the (possibly-remaining) filename length. */
@@ -83,7 +85,6 @@ func (r *Receiver) RecvFileList() (FileList, map[string][]byte, error) {
 				return filelist, symlinks, err
 			}
 			pathlen = uint32(val) // can't use for rsync 31
-
 		} else {
 			val, err := r.Conn.ReadByte()
 			if err != nil {
@@ -91,11 +92,11 @@ func (r *Receiver) RecvFileList() (FileList, map[string][]byte, error) {
 			}
 			pathlen = uint32(val)
 		}
-		//fmt.Println("PathLen", pathlen)
+		// fmt.Println("PathLen", pathlen)
 
 		/* Allocate our full filename length. */
 		/* FIXME: maximum pathname length. */
-		// TODO: if pathlen + partical == 0
+		// TODO: if pathlen + particular == 0
 		// malloc len error?
 
 		p := make([]byte, pathlen)
@@ -111,13 +112,13 @@ func (r *Receiver) RecvFileList() (FileList, map[string][]byte, error) {
 			path = append(path, last.Path[0:partial]...)
 		}
 		path = append(path, p...)
-		//fmt.Println("Path ", string(path))
+		// fmt.Println("Path ", string(path))
 
 		size, err := r.Conn.ReadVarint()
 		if err != nil {
 			return filelist, symlinks, err
 		}
-		//fmt.Println("Size ", size)
+		// fmt.Println("Size ", size)
 
 		/* Read the modification time. */
 		var mtime int32
@@ -129,7 +130,7 @@ func (r *Receiver) RecvFileList() (FileList, map[string][]byte, error) {
 		} else {
 			mtime = filelist[lastIndex].Mtime
 		}
-		//fmt.Println("MTIME ", mtime)
+		// fmt.Println("MTIME ", mtime)
 
 		/* Read the file mode. */
 		var mode FileMode
@@ -142,7 +143,7 @@ func (r *Receiver) RecvFileList() (FileList, map[string][]byte, error) {
 		} else {
 			mode = filelist[lastIndex].Mode
 		}
-		//fmt.Println("Mode", uint32(mode))
+		// fmt.Println("Mode", uint32(mode))
 
 		// TODO: Sym link
 		if ((mode & 32768) != 0) && ((mode & 8192) != 0) {
@@ -156,7 +157,7 @@ func (r *Receiver) RecvFileList() (FileList, map[string][]byte, error) {
 			if err != nil {
 				return filelist, symlinks, errors.New("failed to read symlink")
 			}
-			//fmt.Println("Symbolic Len:", len, "Content:", slink)
+			// fmt.Println("Symbolic Len:", len, "Content:", slink)
 		}
 
 		fmt.Println("@", string(path), mode, size, mtime)
@@ -186,7 +187,7 @@ func (r *Receiver) Generator(remoteList FileList, downloadList []int, symlinks m
 				log.Println("Failed to send index")
 				return err
 			}
-			//fmt.Println("Request: ", string(remoteList[v].Path), uint32(remoteList[v].Mode))
+			// fmt.Println("Request: ", string(remoteList[v].Path), uint32(remoteList[v].Mode))
 			if _, err := r.Conn.Write(emptyBlocks); err != nil {
 				return err
 			}
@@ -227,7 +228,6 @@ func (r *Receiver) Generator(remoteList FileList, downloadList []int, symlinks m
 
 // TODO: It is better to update files in goroutine
 func (r *Receiver) FileDownloader(localList FileList) error {
-
 	rmd4 := make([]byte, 16)
 
 	for {
@@ -238,7 +238,7 @@ func (r *Receiver) FileDownloader(localList FileList) error {
 		if index == INDEX_END { // -1 means the end of transfer files
 			return nil
 		}
-		//fmt.Println("INDEX:", index)
+		// fmt.Println("INDEX:", index)
 
 		count, err := r.Conn.ReadInt() /* block count */
 		if err != nil {
@@ -285,21 +285,21 @@ func (r *Receiver) FileDownloader(localList FileList) error {
 			} else if token < 0 {
 				return errors.New("does not support block checksum")
 				// Reference
-			} else {
-				ctx := make([]byte, token) // FIXME: memory leak?
-				_, err = io.ReadFull(r.Conn, ctx)
-				if err != nil {
-					return err
-				}
-				downloadeSize += int(token)
-				log.Println("Downloaded:", downloadeSize, "byte")
-				if _, err := bufwriter.Write(ctx); err != nil {
-					return err
-				}
-				//if _, err := lmd4.Write(ctx); err != nil {
-				//	return err
-				//}
 			}
+
+			ctx := make([]byte, token) // FIXME: memory leak?
+			_, err = io.ReadFull(r.Conn, ctx)
+			if err != nil {
+				return err
+			}
+			downloadeSize += int(token)
+			log.Println("Downloaded:", downloadeSize, "byte")
+			if _, err := bufwriter.Write(ctx); err != nil {
+				return err
+			}
+			//if _, err := lmd4.Write(ctx); err != nil {
+			//	return err
+			//}
 		}
 		if bufwriter.Flush() != nil {
 			return errors.New("failed to flush buffer")
@@ -387,7 +387,7 @@ func (r *Receiver) Sync() error {
 
 	ioerr, err := r.Conn.ReadInt()
 	if err != nil {
-		return nil
+		return err
 	}
 	log.Println("IOERR", ioerr)
 

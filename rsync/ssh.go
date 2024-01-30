@@ -9,7 +9,7 @@ type SSH struct {
 	session *ssh.Session
 }
 
-func NewSSH(address string, username string, pwd string, cmd string) (*SSH, error) {
+func NewSSH(address string, _ string, _ string, cmd string) (*SSH, error) {
 	config := &ssh.ClientConfig{
 		Config:            ssh.Config{},
 		User:              "",

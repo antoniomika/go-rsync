@@ -35,7 +35,6 @@ func NewMuxReaderV0(reader io.ReadCloser) *MuxReaderV0 {
 	}
 	// Demux in Goroutine
 	go func() {
-
 		header := make([]byte, 4)  // Header size: 4 bytes
 		var dsize uint32 = 1 << 16 // Default size: 65536
 		bytespool := make([]byte, dsize)
@@ -65,7 +64,6 @@ func NewMuxReaderV0(reader io.ReadCloser) *MuxReaderV0 {
 
 					body := bytespool[:size]
 					_, err := io.ReadFull(reader, body)
-
 					// FIXME: Never return EOF
 					if err != nil { // The connection was closed by server
 						panic(err)
@@ -74,9 +72,8 @@ func NewMuxReaderV0(reader io.ReadCloser) *MuxReaderV0 {
 					for _, b := range body {
 						mr.Data <- b
 					}
-
 				} else { // out-of-band data
-					//otag := tag - 7
+					// otag := tag - 7
 					msg := make([]byte, size)
 					if _, err := io.ReadFull(reader, msg); err != nil {
 						panic("Failed to read out-of-band data")

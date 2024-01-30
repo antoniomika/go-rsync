@@ -1,5 +1,6 @@
 package rsync
 
+//nolint:revive,stylecheck
 const (
 	RSYNC_VERSION = "@RSYNCD: 27.0\n"
 	RSYNCD_OK     = "@RSYNCD: OK"
@@ -50,12 +51,12 @@ const (
 	FLIST_TIME_SAME = 0x80 /* time is repeat */
 
 	// File type
-	S_IFMT   = 0170000 /* Type of file */
-	S_IFREG  = 0100000 /* Regular file.  */
-	S_IFDIR  = 0040000 /* Directory.  */
-	S_IFLNK  = 0120000 /* Symbolic link.  */
-	S_IFCHR  = 0020000 /* Character device.  */
-	S_IFBLK  = 0060000 /* Block device.  */
-	S_IFIFO  = 0010000 /* FIFO.  */
-	S_IFSOCK = 0140000 /* Socket.  */
+	S_IFMT   = 0o170000 /* Type of file */
+	S_IFREG  = 0o100000 /* Regular file.  */
+	S_IFDIR  = 0o040000 /* Directory.  */
+	S_IFLNK  = 0o120000 /* Symbolic link.  */
+	S_IFCHR  = 0o020000 /* Character device.  */
+	S_IFBLK  = 0o060000 /* Block device.  */
+	S_IFIFO  = 0o010000 /* FIFO.  */
+	S_IFSOCK = 0o140000 /* Socket.  */
 )

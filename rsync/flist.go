@@ -17,7 +17,7 @@ type FileMode uint32
 
 // reference: os/types.go
 func NewFileMode(mode os.FileMode) FileMode {
-	m := FileMode(mode & 0777)
+	m := FileMode(mode & 0o777)
 	// TODO: supports symlink
 	if mode.IsRegular() {
 		return m | S_IFREG
@@ -66,12 +66,12 @@ func (m FileMode) IsSOCK() bool {
 
 // Return only unix permission bits
 func (m FileMode) Perm() FileMode {
-	return m & 0777
+	return m & 0o777
 }
 
 // Convert to os.FileMode
 func (m FileMode) Convert() os.FileMode {
-	mode := os.FileMode(m & 0777)
+	mode := os.FileMode(m & 0o777)
 	switch m & S_IFMT {
 	case S_IFREG:
 		// For regular files, none will be set.
@@ -137,7 +137,9 @@ func (L FileList) Swap(i, j int) {
 	L[i], L[j] = L[j], L[i]
 }
 
-/* Diff two sorted rsync file list, return their difference
+/*
+	Diff two sorted rsync file list, return their difference
+
 list NEW: only R has.
 list OLD: only L has.
 */
@@ -178,5 +180,5 @@ func (L FileList) Diff(R FileList) (newitems []int, olditems []int) {
 		newitems = append(newitems, j)
 	}
 
-	return
+	return newitems, olditems
 }

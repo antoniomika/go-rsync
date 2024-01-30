@@ -66,7 +66,7 @@ func (r *MuxReader) readHeader() error {
 		if tag == (MUX_BASE + MSG_DATA) { // MUX_BASE + MSG_DATA
 			r.Remain = size
 			return nil
-		} else { // out-of-band data
+		} else { //nolint:revive // out-of-band data
 			// otag := tag - 7
 			msg := make([]byte, size)
 			if _, err := io.ReadFull(r.In, msg); err != nil {

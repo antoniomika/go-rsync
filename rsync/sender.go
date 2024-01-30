@@ -21,9 +21,9 @@ func (s *Sender) SendFileList() error {
 	}
 
 	// Send list to receiver
-	var last *FileInfo = nil
+	var last *FileInfo
 	for _, f := range list {
-		var flags byte = 0
+		var flags byte
 
 		if bytes.Equal(f.Path, []byte(".")) {
 			if f.Mode.IsDIR() {
@@ -65,7 +65,7 @@ func (s *Sender) SendFileList() error {
 			flags |= FLIST_NAME_LONG
 		}
 		/* Send flags */
-		if err != s.Conn.WriteByte(flags) {
+		if err := s.Conn.WriteByte(flags); err != nil {
 			return err
 		}
 
@@ -112,12 +112,13 @@ func (s *Sender) SendFileList() error {
 
 		// TODO: if always_checksum?
 
+		//nolint
 		last = &f
 	}
 	return nil
 }
 
-func (s *Sender) Generator(fileList FileList) error {
+func (s *Sender) Generator(_ FileList) error {
 	for {
 		index, err := s.Conn.ReadInt()
 		if err != nil {
@@ -129,29 +130,29 @@ func (s *Sender) Generator(fileList FileList) error {
 		// Receive block checksum from receiver
 		count, err := s.Conn.ReadInt()
 		if err != nil {
-			return nil
+			return err
 		}
 
 		blen, err := s.Conn.ReadInt()
 		if err != nil {
-			return nil
+			return err
 		}
 
 		s2len, err := s.Conn.ReadInt()
 		if err != nil {
-			return nil
+			return err
 		}
 
 		remainder, err := s.Conn.ReadInt()
 		if err != nil {
-			return nil
+			return err
 		}
 
-		sums := make([]SumChunk, 0, count)
+		// sums := make([]SumChunk, 0, count)
 
 		var (
-			i      int32 = 0
-			offset int64 = 0
+			i      int32
+			offset int64
 		)
 
 		for ; i < count; i++ {
@@ -176,7 +177,7 @@ func (s *Sender) Generator(fileList FileList) error {
 				chunk.ChunkLen = uint(blen)
 			}
 			offset += int64(chunk.ChunkLen)
-			sums = append(sums)
+			// sums = append(sums)
 		}
 		result := new(SumStruct)
 		result.FileLen = uint64(offset)
@@ -184,7 +185,6 @@ func (s *Sender) Generator(fileList FileList) error {
 		result.BlockLen = uint64(blen)
 		result.Sum2Len = uint64(s2len)
 		result.Remainder = uint64(remainder)
-
 	}
 	if err := s.FileUploader(); err != nil {
 		return err

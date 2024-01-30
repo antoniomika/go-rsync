@@ -10,7 +10,7 @@ type Attribs struct {
 	HasLinks   bool // -l
 	HasGID     bool // -g
 	HasUID     bool // -u
-	//compress 	bool // -z
+	// compress 	bool // -z
 }
 
 func (a *Attribs) Marshal() []byte {

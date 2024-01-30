@@ -1,6 +1,6 @@
-module github.com/antoniomika/go-rsync
+module go.ciq.dev/go-rsync
 
-go 1.18
+go 1.20
 
 require (
 	github.com/kaiakz/ubuffer v0.0.0-20200803053910-dd1083087166
